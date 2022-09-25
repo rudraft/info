@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>База призывников подлежащих частичной мобилизации</title>
+    <style>
+        h1, h2, h3 {
+            text-align: center;
+        }
+        body {
+            font-family: Arial;
+            display: 5rem;
+            padding: 20px 60px 60px 60px;
+        }
+        .block {
+            display: flex;
+            flex-direction: column;
+            border-radius: 15px;
+            box-shadow: 0 24px 48px #e6ebf5;
+            border: 1px solid #e6ebf5;
+            padding: 1rem 2rem;
+        }
+        table {
+            border-collapse: collapse;
+            margin: 25px 0;
+            font-size: 0.9em;
+            font-family: sans-serif;
+            min-width: 400px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.15);
+        }
+        table thead tr {
+            background-color: #bdd0f3;
+            text-align: left;
+        }
+        table th,
+        table td {
+            padding: 12px 15px;
+        }
+        tbody tr {
+            border-bottom: 1px solid #dddddd;
+        }
+        tbody tr:nth-of-type(even) {
+            background-color: #f3f3f3;
+        }
+        tbody tr:last-of-type {
+            border-bottom: 2px solid #bdd0f3;
+        }
+    </style>
+</head>
+<body>
+
+<h1>База призывников подлежащих частичной мобилизации</h1>
+<div class="block">
+    <form style="margin: 0 auto;" action="" method="GET">
+        <label>
+            <input placeholder="Фамилия" id="last_name_field" name="last_name" type="text">
+        </label>
+        <label>
+            <input placeholder="Имя"id="first_name_field" name="first_name" type="text">
+        </label>
+        <input type="submit" id="search_btn" value="Поиск в базе" />
+    </form>
+    <table style="display: none" id="people_table">
+        <thead>
+        <tr>
+            <th>Полное имя</th>
+            <th>Дата рождения</th>
+            <th>Адрес</th>
+        </tr>
+        </thead>
+        <tbody id="people_table_body">
+        </tbody>
+    </table>
+</div>
+<div class="block" id="people">
+    <h3 style="text-align: left;">Не позволяйте государству принебрегать вашими правами!</h3>
+    <p>
+        21 сентября 2022 года президент Российской Федерации Владимир Путин объявил о начале частичной мобилизации, и
+        подписал соответствующий <a href="http://publication.pravo.gov.ru/Document/View/0001202209210001">указ</a>. Накануне
+        обращения президента, Государственная Дума <a href="http://duma.gov.ru/news/55277/">ужесточила наказания</a> за преступления против военной службы. Однако население страны не было надлежащим образом проинформированно про то,
+        <a href="https://www.rbc.ru/politics/23/09/2022/632c79879a79472346c30a27">как будет происходить мобилизация</a>, она
+        часто проходит с нарушением процедур и повестки получают лица, <a href="https://www.consultant.ru/document/cons_doc_LAW_13454/25fbd4e34ce45ed1b914188bace31872ee4df5da/">не подлежащие мобилизации в целом</a> или в рамках
+        конкретной частичной мобилизации.
+    </p>
+
+    <p>
+        На этом сайте вы можете получить удобный доступ к базе данных лиц, подлежащих мобилизации, которая попала в
+        публичный доступ в результате халатности сотрудников МО РФ. В случае если вы находитесь в этом списке, но
+        принадлежите к категорям лиц, которые не подлежат мобилизации - не ожидайте получения повестки! Незамедлительно
+        обращайтесь за квалифицированной юридической помощью к адвокатам или в правозащитные организации: <a href="https://ksmrus.ru/">Комитет Солдатских матерей России</a>, <a href="https://map.mhg.ru/">правозащитные приёмные Московской Хельсинской Группы</a>, <a href="https://ovdinfo.org/">ОВД Инфо</a>.
+    </p>
+
+    <p>
+        База данных сайта обновляется по мере поступления новой информации про списки призывников.
+    </p>
+</div>
+
+<script>
+    function init() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const last_name = urlParams.get("last_name");
+        const first_name = urlParams.get("first_name");
+
+        const last_name_field = document.getElementById("last_name_field");
+        const first_name_field = document.getElementById("first_name_field");
+
+        last_name_field.value = last_name;
+        first_name_field.value = first_name;
+
+        update_people_table(last_name, first_name);
+    }
+
+    function show_not_found(s) {
+        const people = document.getElementById("people")
+        people.innerHTML = '<h3>' + s + '</h3>';
+    }
+
+    function update_people_table(last_name, first_name) {
+        if (!last_name) {
+            return;
+        }
+
+        fetch("db/" + last_name.toUpperCase(), { "method": "GET" })
+            .then(Result => Result.json())
+            .then(data => parse_people_output(first_name, data))
+            .catch(msg => { console.log(msg); parse_people_output(null, {}); })
+    }
+
+    function parse_people_output(first_name, data) {
+        let res = [];
+        if (first_name) {
+            res = data[first_name.toUpperCase()] || [];
+        } else {
+            for (const k in data) {
+                res = res.concat(data[k]);
+            }
+        }
+        show_people(res);
+    }
+
+    function show_people(res) {
+        if (!res.length) {
+            show_not_found("Вы не были найдены в базе призывников.");
+            return;
+        }
+
+        const table = document.getElementById("people_table");
+        const table_body = document.getElementById("people_table_body");
+        const people = document.getElementById("people");
+        for (const v of res) {
+            const row = document.createElement("tr");
+            row.innerHTML = `
+   <td>${v["full_name"]}</td><td>${v["birth_date"]}</td><td>${v["address"]}</td>
+`;
+            table_body.appendChild(row);
+        }
+        table.style.display = "table";
+        people.style.display = "none";
+    }
+
+    window.onload = () => {
+        init();
+    };
+</script>
+</body>
+</html>
